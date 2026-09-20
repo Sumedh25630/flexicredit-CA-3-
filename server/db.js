@@ -4,9 +4,22 @@ const dotenv = require('dotenv');
 dotenv.config();
 
 const connectDB = async () => {
+  if (mongoose.connection.readyState === 1) {
+    return mongoose.connection;
+  }
+
+  if (mongoose.connection.readyState === 2) {
+    return mongoose.connection.asPromise();
+  }
+
+  if (!process.env.MONGO_URI) {
+    throw new Error('MONGO_URI is not defined in the environment variables');
+  }
+
   try {
-    const conn = await mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/nightlist');
+    const conn = await mongoose.connect(process.env.MONGO_URI);
     console.log(`MongoDB Connected: ${conn.connection.host}`);
+    return conn.connection;
   } catch (error) {
     console.error(`Error: ${error.message}`);
     process.exit(1);

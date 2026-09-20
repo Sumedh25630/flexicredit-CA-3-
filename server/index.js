@@ -1,15 +1,37 @@
 const express = require('express');
-const cors = require('cors'); // Trigger restart
-
+const cors = require('cors');
 const dotenv = require('dotenv');
 const connectDB = require('./db');
 
 dotenv.config();
-connectDB();
 
 const app = express();
-app.use(cors());
+
+app.use(cors({
+  origin: process.env.CLIENT_URL || '*',
+  credentials: true
+}));
+
 app.use(express.json());
+
+let dbPromise;
+
+const ensureDB = async () => {
+  if (!dbPromise) {
+    dbPromise = connectDB();
+  }
+
+  return dbPromise;
+};
+
+app.use(async (req, res, next) => {
+  try {
+    await ensureDB();
+    next();
+  } catch (error) {
+    next(error);
+  }
+});
 
 app.use('/api/users', require('./routes/userRoutes'));
 app.use('/api/tasks', require('./routes/taskRoutes'));
@@ -22,10 +44,16 @@ app.use('/api/chat', require('./routes/chatRoutes'));
 app.use('/api/code', require('./routes/codeRoutes'));
 
 app.get('/', (req, res) => {
-  res.send('Nightlist API is running');
+  res.json({
+    message: 'Nightlist API is running'
+  });
 });
 
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+if (require.main === module) {
+  const PORT = process.env.PORT || 5000;
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+  });
+}
+
+module.exports = app;
